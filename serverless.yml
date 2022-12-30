@@ -4,22 +4,24 @@ provider:
   name: aws
   runtime: nodejs12.x
   #Permisos sobre DynamoDB (2 Tablas), SNS, SQS, State Machine
+  #Solo basta con cambiar el numero de ID en la seccion <idAWSAccount>
+  #Recuerde que las fases de las StepFunctions son llamadas states
   iamRoleStatements:
     - Effect: Allow
       Action: dynamodb:*
-      Resource: arn:aws:dynamodb:us-east-1:711459267474:table/bookTable
+      Resource: arn:aws:dynamodb:us-east-1:<idAWSAccount>:table/bookTable
     - Effect: Allow
       Action: dynamodb:*
-      Resource: arn:aws:dynamodb:us-east-1:711459267474:table/userTable
+      Resource: arn:aws:dynamodb:us-east-1:<idAWSAccount>:table/userTable
     - Effect: Allow
       Action: sns:*
-      Resource: arn:aws:sns:us-east-1:711459267474:NotifyCourier
+      Resource: arn:aws:sns:us-east-1:<idAWSAccount>:NotifyCourier
     - Effect: Allow
       Action: sqs:*
-      Resource: arn:aws:sqs:us-east-1:711459267474:OrdersQueue
+      Resource: arn:aws:sqs:us-east-1:<idAWSAccount>:OrdersQueue
     - Effect: Allow
       Action: states:*
-      Resource: arn:aws:states:us-east-1:711459267474:stateMachine:storeCheckoutFlow
+      Resource: arn:aws:states:us-east-1:<idAWSAccount>:stateMachine:storeCheckoutFlow
 
 #Plugin necesario para la integracion con AWS - Step Functions 
 plugins:
@@ -30,30 +32,47 @@ functions:
   #Verifica si el producto existe y si tiene la cantidad necesaria.
   checkInventory:
     handler: handler.checkInventory
+  #Calcula el total de la compra
   calculateTotal:
     handler: handler.calculateTotal
+  #Redime los puntos de la compra
   redeemPoints:
     handler: handler.redeemPoints
+  #Realiza el pago de la orden
   billCustomer:
     handler: handler.billCustomer
+  #Restaura los puntos redimidos
   restoreRedeemPoints:
     handler: handler.restoreRedeemPoints
+  #Restaura la cantidad de libros
   restoreQuantity:
     handler: handler.restoreQuantity
+  #Funcion para la gestion de mensajes con SQS
+    #BatchSize especifica el número de mensajes que se deben procesar en una sola ejecución de una función de AWS Lambda. .
   sqsWorker:
     handler: handler.sqsWorker
     events:
       - sqs:
-          arn: arn:aws:sqs:us-east-1:711459267474:OrdersQueue
+          arn: arn:aws:sqs:us-east-1:<idAWSAccount>:OrdersQueue
           batchSize: 1
 
+#Pasos del proceso
 stepFunctions:
   stateMachines:
+    #StateMachine para el procesamiento de la Orden
+    #Inicia con la ejecucion de la funcion storeCheckFlow (StartAt:)
+    #Tiene 15 estados que componen el procesamiento, algunos encargados del manejo de errores (terminan con el sufijo Error)
     storeCheckoutFlow:
       name: storeCheckoutFlow
       definition:
         StartAt: checkInventory
         States:
+          #Al definir una tarea debe incluirse el Type, el Arn del recurso y se recomienda un control para los errores: En este caso tenemos
+          #Dos manejador de errores por si el libro no fue encontrado "BookNotFound" y BookOutOfStock devueltos en la funcion checkInventory. Al controlar un error debe indicarse
+          #el paso siguiente "Next:"
+          #ResultPath se puede utilizar para seleccionar y almacenar cualquier parte de los resultados de una tarea en el estado de la ejecución del flujo de trabajo. 
+          #Esto puede ser útil para extraer y utilizar solo los datos necesarios en el flujo de trabajo o para almacenar datos que se utilizarán más adelante en el flujo de trabajo.
+          #En este caso estamos almacenando Book que es esta dentro del return de la funcion lambda
           checkInventory:
             Type: Task
             Resource:
@@ -100,14 +119,18 @@ stepFunctions:
                 ResultPath: "$.customerBilling"
                 Next: BillingError
             Next: PrepareOrder
-          PrepareOrder: #Add to the queue, lambda worker, will allocate the quirier by calling a 3rd party api and reduce the amount from the item
+          #Esta tarea es la gestion de envia mensajes
+          PrepareOrder: 
             Type: Task
             Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
             Parameters:
-              QueueUrl: https://sqs.us-east-1.amazonaws.com/711459267474/OrdersQueue
+              QueueUrl: https://sqs.us-east-1.amazonaws.com/<idAWSAccount>/OrdersQueue
+              #La cadena "$" en el cuerpo del mensaje se refiere a una variable de entorno en el archivo YAML de Serverless.
               MessageBody:
                 Input.$: "$"
-                Token.$: "$$.Task.Token" #From the context
+                #La cadena "$$.Task.Token" es una referencia a una variable especial en el contexto de un archivo YAML de Serverless. Esta variable se conoce como el "Token de Tarea" 
+                #y se utiliza para autorizar la ejecución de una tarea en una función de AWS Lambda.
+                Token.$: "$$.Task.Token" 
             ResultPath: "$.courierStatus"
             Catch:
               - ErrorEquals: [NoCourierAvailable]
@@ -118,7 +141,7 @@ stepFunctions:
             Type: Task
             Resource: arn:aws:states:::sns:publish
             Parameters:
-              TopicArn: arn:aws:sns:us-east-1:711459267474:NotifyCourier
+              TopicArn: arn:aws:sns:us-east-1:<idAWSAccount>:NotifyCourier
               Message.$: "$"
             Next: Dispatched
           Dispatched:
@@ -153,6 +176,7 @@ stepFunctions:
             Type: Pass
             Result: "Error in redeeming points"
             End: true
+          #Los errores son de Type: Pass. Puede llevar a otra tarea o simplemente aplicar End: true y asi finalizar el flujo
           BillingError:
             Type: Pass
             Result: "Billing error"

@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "serverless-step-functions": "^2.32.0"
+    "serverless-step-functions": "^3.11.1"
   }
 }
