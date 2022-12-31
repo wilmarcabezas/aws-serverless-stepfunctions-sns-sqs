@@ -12,6 +12,14 @@ SNS (Simple Notification Service) es un servicio de AWS que le permite enviar me
 
 SQS (Simple Queue Service) es un servicio de AWS que le permite crear colas de mensajes para almacenar y transmitir información de manera segura. Puede utilizar SQS para procesar y transmitir mensajes de manera asíncrona.
 
+Este repositorio proporciona un ejemplo de cómo utilizar los servicios de 
+
+[AWS Step Functions](https://aws.amazon.com/es/step-functions/), 
+
+[SNS (Simple Notification Service)](https://aws.amazon.com/es/sns/) y
+
+[SQS (Simple Queue Service)](https://aws.amazon.com/es/sqs/) para crear un flujo de trabajo serverless.
+
 ## ¿Cómo funciona este ejemplo?
 
 En este ejemplo, se utiliza una función de AWS Lambda para enviar un mensaje a un tópico de SNS. Luego, se configura una suscripción de SQS a ese tópico de SNS para que reciba el mensaje. Finalmente, se utiliza una función de AWS Lambda para procesar el mensaje de la cola de SQS.
