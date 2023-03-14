@@ -1,4 +1,4 @@
-# AWS Serverless Step Functions con SNS y SQS  🚀
+# AWS-Serverless Step Functions con SNS y SQS  🚀
 
 Este repositorio proporciona un ejemplo de cómo utilizar los servicios de AWS Step Functions, SNS y SQS para crear un flujo de trabajo serverless.
 
