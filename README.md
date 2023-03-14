@@ -4,7 +4,7 @@ Este repositorio proporciona un ejemplo de cómo utilizar los servicios de AWS S
 
 ## ¿Qué son AWS Step Functions?
 
-AWS Step Functions es un servicio de AWS que le permite definir y ejecutar flujos de trabajo de manera fácil y segura
+AWS Step Functions es un servicio de AWS que le permite definir y ejecutar flujos de trabajo de manera fácil y segura.
 
 ## ¿Qué son SNS y SQS?
 
